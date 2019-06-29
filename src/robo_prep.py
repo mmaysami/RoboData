@@ -1,10 +1,22 @@
+# -------------------------------------------------------------------------------
+# Name:        Robo Data Prep
+# Purpose:     Imputing and Featurizing Input DataFrame (for RoboLogistics)
+#
+#
+# Author:      Mohammad Maysami
+#
+# Created:     June 2019
+# Copyright:   (c) MM 2019
+# Licence:     See Git
+# -------------------------------------------------------------------------------
+
 import pandas as pd
 import numpy as np
-
+import scipy as scp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 # from sklearn.linear_model import LogisticRegression
-import scipy
+
 
 # ======================================================================
 class RoboImputer(TransformerMixin):
@@ -59,7 +71,12 @@ class RoboImputer(TransformerMixin):
 # ======================================================================
 class RoboFeaturizer(BaseEstimator, TransformerMixin):
     """
-
+        Data Cleaning Class
+        Fill-in missing values
+        Add binary column to identify missing values
+        Convert nominal numbers using One-Hot-Encoder
+        Convert categorical columns using either Label or One-Hot Encdoers
+        Drop columns with no variation or  major missing values
     """
     def __init__(self,
                  max_unique_for_discrete=10,
@@ -90,6 +107,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 
     # ------------------------------------------------------------------
     def fit(self, X, y=None):
+        # TODO: Move Util functions into a separate file for re-use
         # --------------------------------
         def is_numeric(col):
             def try_numeric(x):
@@ -111,7 +129,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 
             return np.all([try_int_comparison(x) for x in col])
 
-            # --------------------------------
+        # --------------------------------
         # Ensure X is DataFrame and Get Columns
         if not isinstance(X, pd.DataFrame):
             X = pd.DataFrame(X)
@@ -121,6 +139,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         self.drop_cols = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns to drop (1 Unique)
         self.ohe_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns needing One-Hot Encoding
         self.lbl_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns needing Label Encoding
+        #TODO: Replace Lable with Target or Better Encoders
         self.numeric_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Numeric Columns
         self.categorical_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Categorical Columns
 
@@ -187,6 +206,8 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                 self.feature_names_.extend(["{}_OHE_{}".format(att, j) for j in cat])
                 self.feature_indices_.extend([ind] * len(cat))
 
+        # Label Encoding
+        # TODO: Might be improved by Target Encoders
         if np.any(self.lbl_indices):
             # Dictionary of Label Encoders for Each Column
             self.label_encoder = dict()
@@ -202,3 +223,187 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         self.feature_names_ = np.array(self.feature_names_)
         self.feature_indices_ = np.array(self.feature_indices_)
         return self
+
+    # ------------------------------------------------------------------
+    def transform(self, X, y=None):
+
+        # Ensure X is DataFrame and Get Columns
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+
+        # Missing Columns
+        res = []
+        if self.add_missing_flag:
+            for col in self.missing_col_names:
+                res.append(pd.isnull(X[col]))
+
+        # Drop New Categories for Label-Encoded Columns
+        if np.any(self.lbl_indices):
+            for ind in np.where(self.lbl_indices)[0]:
+                cat = self.label_encoder[ind].classes_
+                X.loc[np.logical_not(X[X.columns[ind]].isin(cat)), X.columns[ind]] = np.NaN
+
+        # Impute Missing Values
+        X = self.imputer.transform(X)
+
+        # Take Care of To-Be-Dropped and Numeric Columns
+        for i, col in enumerate(X):
+            # Drop Column
+            if self.drop_cols[i]:
+                continue
+
+            # Append Numeric Columns
+            if self.numeric_indices[i]:
+                res.append(X[col].astype(float))
+
+        combined_cols = []
+        if res:
+            combined_cols.append(scp.sparse.coo_matrix(res).T)
+
+        # One-Hot-Encoding
+        if np.any(self.ohe_indices):
+            ohet = self.one_hot_encoder.transform(X[X.columns[self.ohe_indices]])
+            combined_cols = combined_cols + [ohet]
+
+        # Label-Encoding
+        if np.any(self.lbl_indices):
+            for ind in np.where(self.lbl_indices)[0]:
+                # lblt (N,), needs to be converted to 2D
+                lblt = self.label_encoder[ind].transform(X[X.columns[ind]])
+                combined_cols = combined_cols + [lblt.reshape(-1,1)]
+
+        result = scp.sparse.hstack(combined_cols).tocsr()
+        if not self.sparse:
+            result = result.toarray()
+        return result
+
+
+# ======================================================================
+#               Main
+# ======================================================================
+if __name__ == "__main__":
+    quick = 0
+    test1, test2, test3 = 1, 0, 0
+    # df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na','nan','none','NONE'])
+    df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+                     na_values=['na', 'nan', 'none', 'NONE'])
+    print("df Columns: ", len(df.columns.values))
+
+    if quick:
+        enc = OneHotEncoder(handle_unknown='ignore')
+        X = [['Male', 1], ['Female', 3], ['Female', 2]]
+        enc.fit(X)
+
+        print("Categories",enc.categories_)
+        Xt = enc.transform([['Female', 1], ['Male', 4]]).toarray()
+        XI = enc.inverse_transform([[0, 1, 1, 0, 0], [0, 0, 0, 1, 0]])
+        print("Feature Name", enc.get_feature_names())
+
+
+    if test3:
+        import copy
+
+        X1 = df[1::2]
+        X0 = df[::2]
+
+        s = RoboFeaturizer(encode_categorical=True,
+                       add_missing_flag=False,
+                       max_missing_to_keep=0.75,
+                       sparse=False)
+        X0t = s.fit_transform(X0)
+        X1t = s.transform(X1)
+        print("Input : ", len(X0.columns.values))
+        print("Fit S : ", len(s.feature_indices_))
+        print("X0T   : ", X0t.shape)
+        print("\nId   S[%i]: " %len(s.feature_indices_), s.feature_indices_)
+        print("\nName S[%i]: " %len(s.feature_names_), s.feature_names_)
+
+        print("\nDrops   : ", X0.columns[s.drop_cols])
+        print("\nNames X0: ", X0.columns.values)
+
+        pass
+
+        # ohe = OneHotEncoder(handle_unknown="ignore")
+        # dd = df[1::2]
+        # ohe_indices = np.zeros(dd.shape[1], dtype=bool)
+        # ohe_indices[np.where(dd.columns=='home_ownership')]=True
+        # if np.any(ohe_indices):
+        #     ohe.fit(XX[XX.columns[ohe_indices]])
+
+
+        # from sklearn.feature_selection import RFE
+        #
+        # rfe = RFE(LogisticRegression(), n_features_to_select=100, step=0.1)
+        # XX = rfe.fit_transform(XX, y[0::2])
+        # XX2 = rfe.transform(XX2)
+
+        # preds = []
+        # for clf in [RandomForestClassifier(1000, n_jobs=4),
+        #             MLPClassifier((100, 100)),
+        #             MLPClassifier((100, 100)),
+        #             KNeighborsClassifier(),
+        #             LogisticRegression()]:
+        #     clf.fit(XX, y[::2])
+        #     print(clf)
+        #     pred = clf.predict(XX2)
+        #     print(np.mean(pred == y[1::2]))
+        #     preds.append(pred)
+        #     clfs.append(clf)
+        #
+        # from scp.stats import mode
+        # np.mean(mode(preds)[0].ravel() == y[1::2])
+
+    if test2:
+        # X = pd.DataFrame(df)
+        # xt = RoboImputer().fit_transform(X)
+        # print(xt)
+
+        df = pd.DataFrame({'string': list('abc'),
+                           'int64': list(range(1, 4)),
+                           'uint8': np.arange(3, 6).astype('u1'),
+                           'float64': np.arange(4.0, 7.0),
+                           'bool1': [True, False, True],
+                           'bool2': [False, True, False],
+                           'dates': pd.date_range('now', periods=3),
+                           'category': pd.Series(list("ABC")).astype('category'),
+                           'A': np.random.rand(3),
+                           'B': 1,
+                           'C': 'foo',
+                           'D': pd.Timestamp('20010102'),
+                           'E': pd.Series([1.0] * 3).astype('float32'),
+                           'F': False,
+                           'G': pd.Series([1] * 3, dtype='int8')
+                           })
+
+        for c in df.columns.values:
+            if df[c].dtype == np.dtype("O"):
+                mytype = "* Object"
+            elif str(df[c].dtype) == "category":
+                mytype = "* Category"
+            elif df[c].dtype == np.dtype(float):
+                mytype = "* Float"
+            # elif df[c].dtype == np.dtype(int):
+            #     mytype = "* int"
+            elif isinstance(df[c].dtype, int):
+                mytype = "* int"
+
+            else:
+                mytype = df[c].dtype
+
+            print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))
+
+
+    if test1:
+        data = [
+            ['a', 1, 2.1],
+            ['b', 1, 1.1],
+            ['b', 2, 2.1],
+            [np.nan, np.nan, np.nan]]
+
+        X = pd.DataFrame(data)
+        Xt = RoboImputer().fit_transform(X)
+        print(Xt)
+        assert Xt.loc[3,0]=='b', "Failed"
+        assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
+        assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
+
