@@ -11,7 +11,8 @@
 # -------------------------------------------------------------------------------
 
 # from abc import abstractmethod, ABCMeta
-
+from functools import wraps
+from inspect import getfullargspec
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -22,6 +23,43 @@ from sklearn.model_selection import GridSearchCV
 
 from src.robo_prep import RoboFeaturizer
 
+
+# =============================================================
+# Generalize Decorator of Function with Arguments
+# =============================================================
+def robo_preprocess(variable='X'):  #, preprocess=None):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # class methods have self as args[0]
+            preprocess = args[0].preprocess
+            if callable(preprocess):
+                raise (AttributeError, "Function decorator used without callabe preprocess argument for %s!" % func.__name__)
+            # Get list of function variables as
+            # (args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations)
+            _inspect_args = getfullargspec(func)
+
+            # Check if variable in function variables
+            if variable in _inspect_args.args:
+
+                if variable in kwargs:
+                    # variable pass as named argument e.g. func(..., var=value, ...)
+                    kwargs[variable] = preprocess.fit_transform(kwargs[variable])
+                else:
+                    # variable pass as positional value e.g. func(..., value, ...)
+
+                    args = list(args)
+                    pos = 0
+                    for i in range(_inspect_args.args.index(variable)):
+                        if _inspect_args.args[i] not in kwargs:
+                            # Function argument passed as value without name
+                            pos += 1
+                    args[pos] = preprocess.fit_transform(args[pos])
+            else:
+                raise Warning("Function decorator parameter %s NOT Found in function %s arguments!" % (variable, func.__name__))
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # ======================================================================
 class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
@@ -97,6 +135,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                                          max_category_for_ohe=max_category_for_ohe)
 
     # ------------------------------------------------------------------
+    @robo_preprocess('X')
     def fit(self, X, y):
         """
         This should fit classifier. All the "work" should be done here.
@@ -108,25 +147,30 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: None, Update/Fit instance of model class
         """
 
-        X = self.preprocess.fit_transform(X)
+        # X = self.preprocess.fit_transform(X)
         super().fit(X, y)
         return self
 
     # ------------------------------------------------------------------
-    def predict(self, X, y=None):
+    @robo_preprocess('X')
+    def predict(self, X):
         """
         Predict class labels on new data
 
         :param X: pd.DataFrame, Input features
         :param y:
         :return: np.ndarray
-                    np.array([1, 0, 1])
+                    e.g. np.array([1, 0, 1])
         """
-        X = self.preprocess.transform(X)
+
+        # Input validation
+        # X = self.preprocess.transform(X)
+
         return super().predict(X)
 
     # ------------------------------------------------------------------
-    def predict_proba(self, X, y=None):
+    @robo_preprocess('X')
+    def predict_proba(self, X):
         """
         Predict the probability of each label
 
@@ -135,9 +179,12 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: np.ndarray
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """
+
+        # X = self.preprocess.transform(X)
         return super().predict_proba(X)
 
     # ------------------------------------------------------------------
+    @robo_preprocess('X')
     def evaluate(self, X, y):
         """
         Get the value of the  metrics: F1-score, LogLoss
@@ -148,10 +195,11 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                     {'f1_score': 0.3, 'logloss': 0.7}
         """
 
-        X = self.preprocess.transform(X)
+        # X = self.preprocess.transform(X)
         return {'f1_score': f1_score(y, self.predict(X)), 'logloss': log_loss(y, self.predict_proba(X))}
 
     # ------------------------------------------------------------------
+    @robo_preprocess('X')
     def tune_parameters(self, X, y):
         """
         Run K-fold cross validation to choose the best parameters
@@ -164,7 +212,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                     {'tol': 0.02, 'fit_intercept': False, 'solver': 'sag', ‘scores’:
                      {'f1_score': 0.3, 'logloss': 0.7}}
         """
-        X = self.preprocess.transform(X)
+        # X = self.preprocess.transform(X)
 
         # Set parameters dictionary
         parameters = {'penalty': self.cv_penalty,
@@ -173,15 +221,19 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                       'fit_intercept': self.cv_fit_intercept,
                       'solver': self.cv_solver
                       }
-
         scoring = {'f1_score': make_scorer(f1_score), 'logloss': make_scorer(log_loss)}
-        clf_tuned = GridSearchCV(self, parameters, scoring=scoring, cv=5,
+
+        # Define CV Grid Search
+        clf_tuned = GridSearchCV(self, parameters,
+                                 scoring=scoring,
+                                 cv=5,
                                  refit='f1_score',
                                  iid=True,
                                  pre_dispatch='2*n_jobs',
                                  n_jobs=-1,
                                  verbose=True
                                  )
+        # Execute CV
         clf_tuned.fit(X, y)
 
         # Get dictionary of best parameters
@@ -210,13 +262,14 @@ if __name__ == '__main__':
     from sklearn.datasets import load_breast_cancer  # Binary Class
     test0 = 1
 
-    if  test0:
+    if test0:
         df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
                          na_values=['na', 'nan', 'none', 'NONE'])
         print("df Columns: ", len(df.columns.values))
 
         X, y = load_breast_cancer(return_X_y=True)
         X = pd.DataFrame(X)
+        y = y[:-2]
 
         # clf = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial', max_iter=1000)
         clf = RoboLogistic(solver='lbfgs', multi_class='auto', C=1.0, max_iter=500)
