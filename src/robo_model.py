@@ -20,6 +20,7 @@ from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
 from sklearn.metrics import make_scorer, f1_score, log_loss
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
+# TODO: add pipeline if applicable
 # from sklearn.pipeline import Pipeline
 
 from src.robo_prep import RoboFeaturizer
