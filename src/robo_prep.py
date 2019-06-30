@@ -15,8 +15,7 @@ import numpy as np
 import scipy as scp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
-# from sklearn.linear_model import LogisticRegression
-
+from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
 
 # ======================================================================
 class RoboImputer(TransformerMixin):
@@ -77,6 +76,14 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         Convert nominal numbers using One-Hot-Encoder
         Convert categorical columns using either Label or One-Hot Encdoers
         Drop columns with no variation or  major missing values
+
+
+        :param max_unique_for_discrete: [int], Encode columns of up to this threshold of unique numeric values, using one-hot-encoding.
+        :param max_missing_to_keep: [0=<float<=1], Drop columns if fraction (%) of missing values are higher than this threshold
+        :param add_missing_flag: [Bool], For columns with missing values smaller than the threshold, add a binary column to mark missing data points.
+        :param encode_categorical: [Bool], Encode categorical (non-numerical) columns
+        :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
+                    use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
     """
     def __init__(self,
                  max_unique_for_discrete=10,
@@ -84,14 +91,20 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                  add_missing_flag=False,
                  encode_categorical=False,
                  max_category_for_ohe=10,
-                 sparse=False):
+                 ):
+
+        # Validate Initialization Parameters (Only additional ones to LogisticRegression)
+        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer"
+        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1"
+        assert isinstance(add_missing_flag, bool), "add_missing_flag must be boolean"
+        assert isinstance(encode_categorical, bool), "encode_categorical must be boolean"
+        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer"
 
         self.max_unique_for_discrete = max_unique_for_discrete
         self.max_missing_to_keep = max_missing_to_keep
         self.add_missing_flag = add_missing_flag
         self.encode_categorical = encode_categorical
         self.max_category_for_ohe = max_category_for_ohe
-        self.sparse = sparse
         self.imputer = None
 
         self.one_hot_encoder = None
@@ -110,24 +123,24 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         # TODO: Move Util functions into a separate file for re-use
         # --------------------------------
         def is_numeric(col):
-            def try_numeric(x):
+            def is_floatable(x):
                 try:
                     float(x)
                     return True
                 except ValueError:
                     return False
 
-            return np.all([try_numeric(x) for x in col])
+            return np.all([is_floatable(e) for e in col])
 
         # --------------------------------
         def is_integer(col):
-            def try_int_comparison(x):
+            def is_int_eq_float(x):
                 try:
                     return int(x) == float(x)
                 except ValueError:
                     return False
 
-            return np.all([try_int_comparison(x) for x in col])
+            return np.all([is_int_eq_float(x) for x in col])
 
         # --------------------------------
         # Ensure X is DataFrame and Get Columns
@@ -273,8 +286,8 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                 combined_cols = combined_cols + [lblt.reshape(-1,1)]
 
         result = scp.sparse.hstack(combined_cols).tocsr()
-        if not self.sparse:
-            result = result.toarray()
+        # Convert data from sparse to regular array
+        result = result.toarray()
         return result
 
 
@@ -308,8 +321,7 @@ if __name__ == "__main__":
 
         s = RoboFeaturizer(encode_categorical=True,
                        add_missing_flag=False,
-                       max_missing_to_keep=0.75,
-                       sparse=False)
+                       max_missing_to_keep=0.75)
         X0t = s.fit_transform(X0)
         X1t = s.transform(X1)
         print("Input : ", len(X0.columns.values))

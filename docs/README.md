@@ -1,4 +1,5 @@
-# Binary Classifier Class
+class RoboFeaturizer(object):
+    pass# Binary Classifier Class
 
 Binary classification model which wraps python scikit-learn's **Regularized Logistic Regression**
 with series of specific functionalities.
@@ -19,7 +20,7 @@ The *RoboFeaturizer* class usese the *RoboImputer* class to fill up the missing 
  
  Initialization syntax:
 ```python
-    RoboImputer()
+i = RoboImputer()
 ```  
 
 ## Featurizer
@@ -27,14 +28,13 @@ All the pre-processing required is performed thorough an auxilliary class `RoboF
 
 Initialization syntax: 
 ```python
-    RoboFeaturizer(
-                 max_unique_for_discrete=10,
-                 max_missing_to_keep=0.80,
-                 add_missing_flag=False,
-                 encode_categorical=False,
-                 max_category_for_ohe=10,
-                 sparse=False
-                 )
+f = RoboFeaturizer(
+             max_unique_for_discrete=10,
+             max_missing_to_keep=0.80,
+             add_missing_flag=False,
+             encode_categorical=False,
+             max_category_for_ohe=10,
+             )
 ```
 where 
  - `max_unique_for_discrete` [int]: Encode columns of up to this threshold of unique numeric values, using one-hot-encoding.  
@@ -42,12 +42,13 @@ where
  - `add_missing_flag` [Bool]: For columns with missing values smaller than the threshold, add a binary column to mark missing data points. 
  - `encode_categorical` [Bool]: Encode categorical (non-numerical) columns
  - `max_category_for_ohe` [int]: Encode categorical columns with number of categories up to this threshold, use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True` 
- - `sparse` [Bool]:
+ <!-- - `sparse` [Bool]: -->
 
 
 ## Classifier based on Regularize Logistic Regression
 The class follows standard scikit-learn template in initialization and method definition.
 Custom-defined methods for this class are listed below:
+
 
 ##### fit: 
 Fit on training data.
@@ -78,4 +79,4 @@ self.tune_parameters(X, y)
 
 ## Test Data
 Exploratory data analysis of test dataset has been performed and provided in  
-[a notebook](data/EDA.ipyynb).
+[a notebook](data/EDA.ipynb).
