@@ -1,22 +1,3 @@
-
-# -------------------------------------------------------------------------------
-# Name:        Robo Estimator Model
-# Purpose:     Wrapper for sklearn Regularized Logistic Regression
-#
-#
-# Author:      Mohammad Maysami
-#
-# Created:     June 2019
-# Copyright:   (c) MM 2019
-# Licence:     See Git
-# -------------------------------------------------------------------------------
-
-from abc import abstractmethod, ABCMeta
-import numpy as np
-import pandas as pd
-from sklearn.linear_model import LogisticRegression
-
-
 # -------------------------------------------------------------------------------
 # Name:        Robo Estimator Model
 # Purpose:     Wrapper for sklearn Regularized Logistic Regression
@@ -30,13 +11,20 @@ from sklearn.linear_model import LogisticRegression
 # -------------------------------------------------------------------------------
 
 # from abc import abstractmethod, ABCMeta
+
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import make_scorer, f1_score, log_loss
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import f1_score, log_loss
+from sklearn.model_selection import GridSearchCV
+# from sklearn.pipeline import Pipeline
+
+from src.robo_prep import RoboFeaturizer
 
 
-class RoboLogistic(LogisticRegression):
+# ======================================================================
+class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
     """
     Logistic Regression Class
 
@@ -45,19 +33,68 @@ class RoboLogistic(LogisticRegression):
             y = np.array([0, 0, 1])
 
 
+    Note: All estimators should specify all the parameters in  __init__ as explicit keyword arguments
+        (no *args or **kwargs).
+
+    :param max_unique_for_discrete: [int], Encode columns of up to this threshold of unique numeric values, using one-hot-encoding.
+    :param max_missing_to_keep: [0=<float<=1], Drop columns if fraction (%) of missing values are higher than this threshold
+    :param add_missing_flag: [Bool], For columns with missing values smaller than the threshold, add a binary column to mark missing data points.
+    :param encode_categorical: [Bool], Encode categorical (non-numerical) columns
+    :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
+                use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
+
+    :params LogisticRegression Class parameters
+        {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True,
+        'intercept_scaling': 1, 'max_iter': 100, 'multi_class': 'warn', 'n_jobs': None,
+        'penalty': 'l2', 'random_state': None, 'solver': 'warn', 'tol': 0.0001,
+        'verbose': 0, 'warm_start': False}
     """
+
     # __metaclass__  = ABCMeta
-
     # ------------------------------------------------------------------
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize Class Instance
+    def __init__(self,
+                 max_unique_for_discrete=10,
+                 max_missing_to_keep=0.80,
+                 add_missing_flag=False,
+                 encode_categorical=False,
+                 max_category_for_ohe=10,
+                 C=1.0, class_weight=None, dual=False,
+                 fit_intercept=True, intercept_scaling=1,
+                 max_iter=100, multi_class='warn',
+                 n_jobs=None, penalty='l2', random_state=None, solver='warn',
+                 tol=0.0001, verbose=0, warm_start=False
+                ):
 
-        :param args:   Arguments to be passed for initializing Parent Class (LogisticRegression)
-        :param kwargs: Keyword Arguments to be passed for initializing Parent Class (LogisticRegression)
-        """
 
-        super().__init__(*args, **kwargs)
+        # Validate Initialization Parameters (Only additional ones to LogisticRegression)
+        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer"
+        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1"
+        assert isinstance(add_missing_flag,bool), "add_missing_flag must be boolean"
+        assert isinstance(encode_categorical,bool), "encode_categorical must be boolean"
+        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer"
+
+        # Set range of hyper-parameter set for tuning (CVGridSearch)
+        self.cv_penalty = ['l2']
+        self.cv_tol = [1e-6, 1e-5, 1e-4, 1e-3]
+        self.cv_C = [0.1 * e for e in range(1, 11)]
+        self.cv_fit_intercept = [True, False]
+        self.cv_solver = ['newton-cg', 'lbfgs', 'sag', 'saga']
+
+        self.cv_penalty = ['l2']
+        self.cv_tol = [1e-5, 1e-4]
+        self.cv_C = [10 ** p for p in range(-1, 1)]
+        self.cv_fit_intercept = [True, False]
+        self.cv_solver = ['sag', 'saga']
+
+        super().__init__(penalty=penalty, dual=dual, tol=tol, C=C, fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
+                         class_weight=class_weight, random_state=random_state, solver=solver, max_iter=max_iter,
+                         multi_class=multi_class, verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
+
+        self.preprocess = RoboFeaturizer(max_unique_for_discrete=max_unique_for_discrete,
+                                         max_missing_to_keep=max_missing_to_keep,
+                                         add_missing_flag=add_missing_flag,
+                                         encode_categorical=encode_categorical,
+                                         max_category_for_ohe=max_category_for_ohe)
 
     # ------------------------------------------------------------------
     def fit(self, X, y):
@@ -71,16 +108,12 @@ class RoboLogistic(LogisticRegression):
         :return: None, Update/Fit instance of model class
         """
 
+        X = self.preprocess.fit_transform(X)
         super().fit(X, y)
         return self
 
     # ------------------------------------------------------------------
-    def process(self, X, y):
-
-        return None
-
-    # ------------------------------------------------------------------
-    def predict(self, X):
+    def predict(self, X, y=None):
         """
         Predict class labels on new data
 
@@ -89,12 +122,11 @@ class RoboLogistic(LogisticRegression):
         :return: np.ndarray
                     np.array([1, 0, 1])
         """
-
-        yh = super().predict(X)
-        return yh
+        X = self.preprocess.transform(X)
+        return super().predict(X)
 
     # ------------------------------------------------------------------
-    def predict_proba(self, X):
+    def predict_proba(self, X, y=None):
         """
         Predict the probability of each label
 
@@ -103,9 +135,7 @@ class RoboLogistic(LogisticRegression):
         :return: np.ndarray
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """
-
-        p = super().predict_proba(X)
-        return p
+        return super().predict_proba(X)
 
     # ------------------------------------------------------------------
     def evaluate(self, X, y):
@@ -118,13 +148,11 @@ class RoboLogistic(LogisticRegression):
                     {'f1_score': 0.3, 'logloss': 0.7}
         """
 
-        sc_f1 = f1_score(y, self.predict(X))
-        sc_log = log_loss(y, self.predict_proba(X))
-
-        return {'f1_score':sc_f1, 'logloss':sc_log}
+        X = self.preprocess.transform(X)
+        return {'f1_score': f1_score(y, self.predict(X)), 'logloss': log_loss(y, self.predict_proba(X))}
 
     # ------------------------------------------------------------------
-    def tune_parameters(self, X, y=None):
+    def tune_parameters(self, X, y):
         """
         Run K-fold cross validation to choose the best parameters
 
@@ -136,5 +164,79 @@ class RoboLogistic(LogisticRegression):
                     {'tol': 0.02, 'fit_intercept': False, 'solver': 'sag', ‘scores’:
                      {'f1_score': 0.3, 'logloss': 0.7}}
         """
+        X = self.preprocess.transform(X)
 
-        return {}
+        # Set parameters dictionary
+        parameters = {'penalty': self.cv_penalty,
+                      'tol': self.cv_tol,
+                      'C': self.cv_C,
+                      'fit_intercept': self.cv_fit_intercept,
+                      'solver': self.cv_solver
+                      }
+
+        scoring = {'f1_score': make_scorer(f1_score), 'logloss': make_scorer(log_loss)}
+        clf_tuned = GridSearchCV(self, parameters, scoring=scoring, cv=5,
+                                 refit='f1_score',
+                                 iid=True,
+                                 pre_dispatch='2*n_jobs',
+                                 n_jobs=-1,
+                                 verbose=True
+                                 )
+        clf_tuned.fit(X, y)
+
+        # Get dictionary of best parameters
+        tuned_dict = clf_tuned.best_params_
+
+        # Add average scores on all test partitions
+        tuned_scores = {}
+        for k in scoring.keys():
+            tuned_scores[k] = clf_tuned.cv_results_['mean_test_%s' % k].mean()
+        tuned_dict['scoring'] = tuned_scores
+
+        # Update Parent Estimator
+        super().set_params(clf_tuned.best_params_)
+
+        return tuned_dict
+
+
+# ====================================================================================
+# ====================================================================================
+#                                 Main Part
+# ====================================================================================
+# ====================================================================================
+if __name__ == '__main__':
+    print("Executing  Model Example!")
+
+    from sklearn.datasets import load_breast_cancer  # Binary Class
+    test0 = 1
+
+    if  test0:
+        df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+                         na_values=['na', 'nan', 'none', 'NONE'])
+        print("df Columns: ", len(df.columns.values))
+
+        X, y = load_breast_cancer(return_X_y=True)
+        X = pd.DataFrame(X)
+
+        # clf = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial', max_iter=1000)
+        clf = RoboLogistic(solver='lbfgs', multi_class='auto', C=1.0, max_iter=500)
+
+        clf.fit(X, y)
+        yhat = clf.predict(X)
+        p = clf.predict_proba(X)
+        score = clf.evaluate(X, y)
+        # tune = clf.tune_parameters(X,y)
+        try:
+            print("\n X  %s: \n %s" % (X.shape, X[:5, :4]))
+        except:
+            pass
+
+        print("\n y  %s: \n %s" % (y.shape, y[:10]))
+
+        print("\n yhat %s: \n %s" % (yhat.shape, yhat[:10]))
+        print("\n p  %s: \n %s" % (p.shape, p[:10]))
+        try:
+            print("\n score: %s" % score)
+            print("\n tune: %s" % tune)
+        except:
+            pass
