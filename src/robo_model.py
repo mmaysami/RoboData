@@ -16,6 +16,7 @@ from inspect import getfullargspec
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
 from sklearn.metrics import make_scorer, f1_score, log_loss
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
@@ -80,6 +81,8 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
     :param encode_categorical: [Bool], Encode categorical (non-numerical) columns
     :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
                 use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
+    :param scaler: [None or sklearn scaler]:  No scaling of input if None, scale input using 'fit_transform' method
+    # :param scale: [Bool], Use scaling during pre-processing of data
 
     :params LogisticRegression Class parameters
         {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True,
@@ -96,20 +99,21 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                  add_missing_flag=False,
                  encode_categorical=False,
                  max_category_for_ohe=10,
+                 scaler=StandardScaler(),
                  C=1.0, class_weight=None, dual=False,
                  fit_intercept=True, intercept_scaling=1,
                  max_iter=100, multi_class='warn',
                  n_jobs=None, penalty='l2', random_state=None, solver='warn',
-                 tol=0.0001, verbose=0, warm_start=False
-                ):
-
+                 tol=0.0001, verbose=0, warm_start=False):
 
         # Validate Initialization Parameters (Only additional ones to LogisticRegression)
-        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer"
-        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1"
-        assert isinstance(add_missing_flag,bool), "add_missing_flag must be boolean"
-        assert isinstance(encode_categorical,bool), "encode_categorical must be boolean"
-        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer"
+        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer."
+        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1."
+        assert isinstance(add_missing_flag,bool), "add_missing_flag must be boolean."
+        assert isinstance(encode_categorical,bool), "encode_categorical must be boolean."
+        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer."
+        assert (scaler is None) or isinstance(scaler, (Normalizer, StandardScaler, MinMaxScaler)), \
+            "scaler must be either None or one of predefined sklearn Scalers"
 
         # Set range of hyper-parameter set for tuning (CVGridSearch)
         self.cv_penalty = ['l2']
@@ -132,7 +136,8 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                                          max_missing_to_keep=max_missing_to_keep,
                                          add_missing_flag=add_missing_flag,
                                          encode_categorical=encode_categorical,
-                                         max_category_for_ohe=max_category_for_ohe)
+                                         max_category_for_ohe=max_category_for_ohe,
+                                         scaler=scaler)
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
@@ -269,10 +274,14 @@ if __name__ == '__main__':
 
         X, y = load_breast_cancer(return_X_y=True)
         X = pd.DataFrame(X)
-        y = y[:-2]
+        # y = y[:-2]
 
         # clf = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial', max_iter=1000)
-        clf = RoboLogistic(solver='lbfgs', multi_class='auto', C=1.0, max_iter=500)
+        clf = RoboLogistic(solver='lbfgs',
+                           multi_class='auto',
+                           C=1.0,
+                           max_iter=500,
+                           scaler=MinMaxScaler())
 
         clf.fit(X, y)
         yhat = clf.predict(X)

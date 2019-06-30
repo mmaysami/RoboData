@@ -100,6 +100,8 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         :param encode_categorical: [Bool], Encode categorical (non-numerical) columns
         :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
                     use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
+        :param scaler: [None or sklearn scaler]:  No scaling of input if None, scale input using 'fit_transform' method
+        # :param scale: [Bool], Use scaling during pre-processing of data
     """
     def __init__(self,
                  max_unique_for_discrete=10,
@@ -107,20 +109,26 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                  add_missing_flag=False,
                  encode_categorical=False,
                  max_category_for_ohe=10,
+                 scaler=StandardScaler()
                  ):
 
         # Validate Initialization Parameters (Only additional ones to LogisticRegression)
-        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer"
-        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1"
-        assert isinstance(add_missing_flag, bool), "add_missing_flag must be boolean"
-        assert isinstance(encode_categorical, bool), "encode_categorical must be boolean"
-        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer"
+        assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer."
+        assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1."
+        assert isinstance(add_missing_flag, bool), "add_missing_flag must be boolean."
+        assert isinstance(encode_categorical, bool), "encode_categorical must be boolean."
+        assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer."
+        # TODO: Test and add more scalers or make assertion more flexible to accept more choices
+        assert (scaler is None) or isinstance(scaler, (Normalizer, StandardScaler, MinMaxScaler)), \
+            "scaler must be either None or one of predefined sklearn Scalers"
+
 
         self.max_unique_for_discrete = max_unique_for_discrete
         self.max_missing_to_keep = max_missing_to_keep
         self.add_missing_flag = add_missing_flag
         self.encode_categorical = encode_categorical
         self.max_category_for_ohe = max_category_for_ohe
+        self.scaler = scaler
         self.imputer = RoboImputer()
 
         self.one_hot_encoder = None
@@ -336,9 +344,9 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         # Convert data from sparse to regular array
         xt = xt.toarray()
 
-        # Scaling is done only in transofrm where columns are all numeric
-        self.scalar = StandardScaler()
-        xt = self.scalar.fit_transform(xt)
+        # Scaling is done only in transform where columns are all numeric
+        if self.scaler is not None:
+            xt = self.scaler.fit_transform(xt)
 
         return xt
 
@@ -348,7 +356,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 # ======================================================================
 if __name__ == "__main__":
     quick = 0
-    test1, test2, test3 = 1, 0, 0
+    test1, test2, test3 = 0, 1, 1
     # df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na','nan','none','NONE'])
     df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
                      na_values=['na', 'nan', 'none', 'NONE'])
@@ -373,11 +381,13 @@ if __name__ == "__main__":
         X0 = df.loc[::2]    #.copy()
 
         rf = RoboFeaturizer(encode_categorical=True,
-                       add_missing_flag=False,
-                       max_missing_to_keep=0.75)
+                            add_missing_flag=False,
+                            max_missing_to_keep=0.75,
+                            scaler=Normalizer()
+                            )
 
         X0t = rf.fit_transform(X0)
-        X1t = rf.transform(X1.loc[:, ::2])
+        # X1t = rf.transform(X1.loc[:, ::2])
         print("Input : ", len(X0.columns.values))
         print("Fit S : ", len(rf.feature_indices_))
         print("X0T   : ", X0t.shape)
