@@ -17,14 +17,25 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+from sklearn.datasets import load_breast_cancer  # Binary Class
 
 
 # ======================================================================
 class TestData(object):
-    def __init__(self):
-        self.df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na', 'nan', 'none', 'NONE'])
-        self.df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
-                              na_values=['na', 'nan', 'none', 'NONE'])
+    def __init__(self, skcancer=False, verbose=False):
+
+        self.skcancer = skcancer
+        # Get data from source
+        if not skcancer:
+            try:
+                self.df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+                                      na_values=['na', 'nan', 'none', 'NONE'])
+            except:
+                self.df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na', 'nan', 'none', 'NONE'])
+
+        else:
+            X, y = load_breast_cancer(return_X_y=True)
+            self.df = pd.DataFrame(X)
 
         cols = [
             ('Id', 'Id', 'Numeric'),
@@ -66,10 +77,26 @@ class TestData(object):
         self.cols_numeric = [e for e in self.cols_numeric if e not in self.cols_id + self.cols_y]
 
         # Print out list of columns for each subgroup
-        print("\n *** Customer: \n", self.cols_customer)
-        print("\n *** Loan: \n", self.cols_loan)
-        print("\n *** Categorical: \n", self.cols_categorical, "\n")
-        print("\n *** Numerical: \n", self.cols_numeric)
-        len(self.cols_numeric)
+        if verbose:
+            print("\n *** Customer: \n", self.cols_customer)
+            print("\n *** Loan: \n", self.cols_loan)
+            print("\n *** Categorical: \n", self.cols_categorical, "\n")
+            print("\n *** Numerical: \n", self.cols_numeric)
+            print("Number of Numeric Cols: ", len(self.cols_numeric))
         pass
+
+    # ------------------------------------------------------------------
+    def make_X_y(self):
+
+        if not self.skcancer:
+            self.y = np.ravel(self.df[self.cols_y])
+            self.X = self.df.drop(self.cols_y, axis=1)
+            # TODO: Removing Columns with Single Value causes error in CV, chec in future
+            # self.X = self.df.drop(self.cols_y+['initial_list_status', 'pymnt_plan'], axis=1)
+
+        else:
+            self.X, self.y = load_breast_cancer(return_X_y=True)
+            self.X = pd.DataFrame(self.X)
+
+        return self.X, self.y
 
