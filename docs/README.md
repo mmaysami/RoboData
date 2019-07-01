@@ -35,7 +35,7 @@ f = RoboFeaturizer(
              max_unique_for_discrete=10,
              max_missing_to_keep=0.80,
              add_missing_flag=False,
-             encode_categorical=False,
+             encode_categorical=True,
              max_category_for_ohe=10,
              scaler = StandardScaler()
              )
@@ -60,7 +60,7 @@ f = RoboLogistic(
              max_unique_for_discrete=10,
              max_missing_to_keep=0.80,
              add_missing_flag=False,
-             encode_categorical=False,
+             encode_categorical=True,
              max_category_for_ohe=10,
              scaler = StandardScaler(),
              ...)
