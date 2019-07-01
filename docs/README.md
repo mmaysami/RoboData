@@ -97,4 +97,4 @@ self.tune_parameters(X, y)
 
 ## Test Data
 Exploratory data analysis of test dataset has been performed and provided in  
-[a notebook](data/EDA.ipynb).
+[a notebook](../data/EDA.ipynb).
