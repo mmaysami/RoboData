@@ -229,7 +229,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
-    def tune_parameters(self, X, y, hypeparam_grid=None):
+    def tune_parameters(self, X, y, k=5, hypeparam_grid=None):
         """
         Run K-fold cross validation to choose the best parameters
 
@@ -237,6 +237,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
 
         :param X: pd.DataFrame, Input features
         :param y: np.ndarray, Ground truth labels as a numpy array of 0-s and 1-s.
+        :param k: Number of CV Folds
         :param hypeparam_grid: Dictionary of all hyper-parameter values for CV tuning.
         :return:  dict
                     {'tol': 0.02, 'fit_intercept': False, 'solver': 'sag', ‘scores’:
@@ -258,7 +259,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         # Define CV Grid Search
         clf_tuned = GridSearchCV(self, hypeparam_grid,
                                  scoring=scoring,
-                                 cv=5,
+                                 cv=k,
                                  refit='logloss',
                                  iid=True,
                                  pre_dispatch='2*n_jobs',

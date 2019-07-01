@@ -90,9 +90,10 @@ Find the value of the F1-score, LogLoss metric.
 self.evaluate(X, y)
 ```
 ##### tune_parameters:
-Run K-fold cross validation to choose the best parameters.
+Run K-fold cross validation to choose the best parameters given k as number of folds and 
+dictionary of hyper-parameters for search.
 ```python
-self.tune_parameters(X, y)
+self.tune_parameters(X, y, k=5, hypeparam_grid=None)
 ```
 
 ## Test Data
