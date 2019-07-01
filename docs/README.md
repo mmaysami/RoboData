@@ -12,7 +12,8 @@ y = np.array([0, 0, 1])
 ```
 
 ## Imputer
-The *RoboFeaturizer* class usese the *RoboImputer* class to fill up the missing values which follows the simple imputing rules below:   
+The class *RoboImputer* performs filling up the missing values with the lows the simple imputing rules below.
+This class is used in pro-processing of data thorough the *RoboFeaturizer* class.   
  - Column dtype    :   Imputing Value
  - object/category :   most frequent value in the column
  - float           :   mean of column values
@@ -24,7 +25,9 @@ i = RoboImputer()
 ```  
 
 ## Featurizer
-All the pre-processing required is performed thorough an auxilliary class `RoboFeaturizer` and `RoboImputer`.
+All the generalized pre-processing of input data for classifier class are taken care of using 
+the *RoboFeaturizer* class which also gets helped in imputing missing values by the auxiliary 
+`RoboImputer` class above.
 
 Initialization syntax: 
 ```python
@@ -34,6 +37,7 @@ f = RoboFeaturizer(
              add_missing_flag=False,
              encode_categorical=False,
              max_category_for_ohe=10,
+             scaler = StandardScaler()
              )
 ```
 where 
@@ -42,14 +46,28 @@ where
  - `add_missing_flag` [Bool]: For columns with missing values smaller than the threshold, add a binary column to mark missing data points. 
  - `encode_categorical` [Bool]: Encode categorical (non-numerical) columns
  - `max_category_for_ohe` [int]: Encode categorical columns with number of categories up to this threshold, use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True` 
- <!-- - `sparse` [Bool]: -->
+ -  `scaler` [None or sklearn scaler]:  No scaling of input if None, scale input using 'fit_transform' method
+
 
 
 ## Classifier based on Regularize Logistic Regression
 The class follows standard scikit-learn template in initialization and method definition.
 Custom-defined methods for this class are listed below:
 
-
+Initialization syntax: 
+```python
+f = RoboLogistic(
+             max_unique_for_discrete=10,
+             max_missing_to_keep=0.80,
+             add_missing_flag=False,
+             encode_categorical=False,
+             max_category_for_ohe=10,
+             scaler = StandardScaler(),
+             ...)
+```
+where the initalization parameters are combination of `RoboFeaturizer` class discussed above and 
+scikit-learn's `LogisticRegression` class.
+ 
 ##### fit: 
 Fit on training data.
 ```python
