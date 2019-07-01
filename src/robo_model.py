@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
+from sklearn.utils.validation import check_is_fitted, check_consistent_length, check_X_y, check_array
 from sklearn.metrics import make_scorer, f1_score, log_loss
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
@@ -84,7 +85,6 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
     :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
                 use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
     :param scaler: [None or sklearn scaler]:  No scaling of input if None, scale input using 'fit_transform' method
-    # :param scale: [Bool], Use scaling during pre-processing of data
 
     :params LogisticRegression Class parameters
         {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True,
@@ -99,7 +99,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                  max_unique_for_discrete=10,
                  max_missing_to_keep=0.80,
                  add_missing_flag=False,
-                 encode_categorical=False,
+                 encode_categorical=True,
                  max_category_for_ohe=10,
                  scaler=StandardScaler(),
                  C=1.0, class_weight=None, dual=False,
@@ -124,6 +124,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         self.max_category_for_ohe = max_category_for_ohe
         self.scaler = scaler
 
+        # TODO: Might be helpful to add Feature Selection in preprocessing
         self.preprocess = RoboFeaturizer(max_unique_for_discrete=max_unique_for_discrete,
                                          max_missing_to_keep=max_missing_to_keep,
                                          add_missing_flag=add_missing_flag,
@@ -140,16 +141,16 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         self.hypeparam_grid = {'penalty': ['l2'],
                       'tol': [1e-6, 1e-5, 1e-4, 1e-3],
                       'C': [10**p for p in range(-2, 2)],
-                      'fit_intercept': [True, False],
+                      # 'fit_intercept': [True, False],
                       'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
                       'scaler': [None, StandardScaler()]
                       }
 
-        self.hypeparam_grid = {'penalty': ['l2'],
-                      'tol': [1e-5, 1e-4],
-                      'C': [10**p for p in range(-1, 1)],
-                      'fit_intercept': [True, False],
-                      'solver': ['sag', 'saga'],
+        self.hypeparam_grid = {
+            'C': [10 ** p for p in range(-1, 1)],
+            'tol': [1e-5, 1e-4, 1e-3],
+            # 'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
+            # 'scaler': [None, StandardScaler()]
                       }
 
 
@@ -170,7 +171,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         # X = self.preprocess.transform(X)
 
         super().fit(X, y)
-        return self
+        return None
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
@@ -182,6 +183,9 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: np.ndarray
                     e.g. np.array([1, 0, 1])
         """
+
+        # Check is fit had been called
+        check_is_fitted(self, ['classes_','coef_'])
 
         # Using decorator instead for data pre-processing
         #  X = self.preprocess.transform(X)
@@ -198,9 +202,12 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: np.ndarray
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """
+        # Check is fit had been called
+        check_is_fitted(self, ['classes_','coef_'])
 
         # Using decorator instead for data pre-processing
         # X = self.preprocess.transform(X)
+
 
         return super().predict_proba(X)
 
@@ -252,7 +259,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         clf_tuned = GridSearchCV(self, hypeparam_grid,
                                  scoring=scoring,
                                  cv=5,
-                                 refit='f1_score',
+                                 refit='logloss',
                                  iid=True,
                                  pre_dispatch='2*n_jobs',
                                  n_jobs=-1,
@@ -264,16 +271,15 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         # Get dictionary of best parameters
         tuned_dict = clf_tuned.best_params_
 
+        # Update Original Estimator with best parameters (Optional)
+        self.set_params(**clf_tuned.best_params_)
+        self.fit(X, y)
+
         # Add average scores on all test partitions
         tuned_scores = {}
         for k in scoring.keys():
             tuned_scores[k] = clf_tuned.cv_results_['mean_test_%s' % k].mean()
-        tuned_dict['scoring'] = tuned_scores
-
-        # Update Original Estimator with best parameters (Optional)
-        clf_tuned.best_params_.pop('scoring')
-        self.set_params(**clf_tuned.best_params_)
-        self.fit(X, y)
+        tuned_dict['scores'] = tuned_scores
 
         return tuned_dict
 
@@ -294,7 +300,12 @@ if __name__ == '__main__':
                          na_values=['na', 'nan', 'none', 'NONE'])
         print("df Columns: ", len(df.columns.values))
 
-        X, y = load_breast_cancer(return_X_y=True)
+        col_y = 'is_bad'
+        y = np.ravel(df[col_y])
+        X = df.drop([col_y]+['initial_list_status', 'pymnt_plan'], axis=1)
+
+
+        # X, y = load_breast_cancer(return_X_y=True)
         X = pd.DataFrame(X)
         # y = y[:-2]
 
@@ -303,7 +314,7 @@ if __name__ == '__main__':
                            multi_class='auto',
                            C=1.0,
                            max_iter=500,
-                           scaler=MinMaxScaler())
+                           scaler=StandardScaler())
 
         clf.fit(X, y)
         yhat = clf.predict(X)
@@ -316,12 +327,8 @@ if __name__ == '__main__':
             pass
 
         print("\n y  %s: \n %s" % (y.shape, y[:10]))
-
         print("\n yhat %s: \n %s" % (yhat.shape, yhat[:10]))
         print("\n p  %s: \n %s" % (p.shape, p[:10]))
-        try:
-            print("\n score: %s" % score)
-            print("\n tune: %s" % tune)
-            print("\n Instance params: %s" %clf.get_params())
-        except:
-            pass
+        print("\n score: %s" % score)
+        print("\n tune: %s" % tune)
+        print("\n Instance params: %s" %clf.get_params())

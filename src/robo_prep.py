@@ -16,7 +16,7 @@ import scipy as scp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, check_consistent_length
+from sklearn.utils.validation import check_is_fitted, check_consistent_length, check_X_y, check_array
 from sklearn.exceptions import NotFittedError
 
 # Turn off warning as value settings inside classes follow proper pandas format
@@ -30,12 +30,17 @@ class RoboImputer(TransformerMixin):
         object/category :   most frequent value in the column
         float           :   mean of column values
         other dtype     :   median of column
+
+        :param max_unique_for_discrete: [int], Encode columns of up to this threshold of unique numeric values, using one-hot-encoding.
     """
 
-    def __init__(self):
+    def __init__(self, max_unique_for_discrete=10):
         # attribute defined in fit to raise error otherwise
         # self.fillvalue = None
+
+        self.max_unique_for_discrete = max_unique_for_discrete
         pass
+
     # ------------------------------------------------------------------
     @staticmethod
     def most_frequent(col):
@@ -62,7 +67,18 @@ class RoboImputer(TransformerMixin):
             val = self.most_frequent(col)
         elif str(col.dtype) == "category":
             val = self.most_frequent(col)
-        elif col.dtype == np.dtype(float):
+        # TODO: Improve Comparison
+        elif col.dtype in [np.dtype(np.float),
+                           np.dtype(np.float16),
+                           np.dtype(np.float32),
+                           np.dtype(np.float64)]:
+            val = col.mean()
+        elif col.dtype in [np.dtype(np.int),
+                           np.dtype(np.int8),
+                           np.dtype(np.int16),
+                           np.dtype(np.int32),
+                           np.dtype(np.int64)] and \
+                col.nunique()> self.max_unique_for_discrete:
             val = col.mean()
         else:
             val = col.median()
@@ -126,7 +142,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                  max_unique_for_discrete=10,
                  max_missing_to_keep=0.80,
                  add_missing_flag=False,
-                 encode_categorical=False,
+                 encode_categorical=True,
                  max_category_for_ohe=10,
                  scaler=StandardScaler()
                  ):
@@ -141,14 +157,13 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         assert (scaler is None) or isinstance(scaler, (Normalizer, StandardScaler, MinMaxScaler)), \
             "scaler must be either None or one of predefined sklearn Scalers"
 
-
         self.max_unique_for_discrete = max_unique_for_discrete
-        self.max_missing_to_keep = max_missing_to_keep
+        self.max_missing_to_keep = 1    #max_missing_to_keep
         self.add_missing_flag = add_missing_flag
         self.encode_categorical = encode_categorical
         self.max_category_for_ohe = max_category_for_ohe
         self.scaler = scaler
-        self.imputer = RoboImputer()
+        self.imputer = RoboImputer(max_unique_for_discrete=max_unique_for_discrete)
 
         self.one_hot_encoder = None
         self.label_encoder = None
@@ -242,9 +257,10 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
             if self.drop_cols[i]:
                 pass
 
-            # Single Value Columns
-            elif len(set(X[col])) == 1:
-                self.drop_cols[i] = True
+            # TODO: This might cause issues in CV
+            # # Single Value Columns
+            # elif len(set(X[col])) == 1:
+            #     self.drop_cols[i] = True
 
             # Numeric Columns
             elif is_numeric(X[col]):
@@ -280,7 +296,6 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                 self.feature_indices_.extend([ind] * len(cat))
 
         # Label Encoding
-        # TODO: Might be improved by Target Encoders
         if np.any(self.lbl_indices):
             # Dictionary of Label Encoders for Each Column
             self.label_encoder = dict()
@@ -327,7 +342,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         if not isinstance(X, pd.DataFrame):
             X = pd.DataFrame(X)
 
-        #
+
         xt_numeric = []
         # Missing Columns
         if self.add_missing_flag:
@@ -369,7 +384,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
             for ind in np.where(self.lbl_indices)[0]:
                 # lblt (N,), needs to be converted to 2D
                 lblt = self.label_encoder[ind].transform(X[X.columns[ind]])
-                xt_cols += [lblt.reshape(-1,1)]
+                xt_cols += [lblt.reshape(-1, 1)]
 
         xt = scp.sparse.hstack(xt_cols).tocsr()
         # Convert data from sparse to regular array
@@ -386,22 +401,12 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 #               Main
 # ======================================================================
 if __name__ == "__main__":
-    quick = 0
-    test1, test2, test3 = 0, 1, 1
+    test0, test1, test2, test3 = 0, 0, 1, 0
     # df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na','nan','none','NONE'])
     df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
                      na_values=['na', 'nan', 'none', 'NONE'])
     print("df Columns: ", len(df.columns.values))
 
-    if quick:
-        enc = OneHotEncoder(handle_unknown='ignore')
-        X = [['Male', 1], ['Female', 3], ['Female', 2]]
-        enc.fit(X)
-
-        print("Categories",enc.categories_)
-        Xt = enc.transform([['Female', 1], ['Male', 4]]).toarray()
-        XI = enc.inverse_transform([[0, 1, 1, 0, 0], [0, 0, 0, 1, 0]])
-        print("Feature Name", enc.get_feature_names())
 
     if test3:
         import copy
@@ -428,10 +433,33 @@ if __name__ == "__main__":
         print("\nNames X0: ", X0.columns.values)
 
     if test2:
-        # X = pd.DataFrame(df)
-        # xt = RoboImputer().fit_transform(X)
-        # print(xt)
+        df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+                              na_values=['na', 'nan', 'none', 'NONE'])
+        imp = RoboImputer()
+        imp.fit_transform(df)
 
+    if test1:
+        data = [
+            ['a', 1, 2.1],
+            ['b', 1, 1.1],
+            ['b', 2, 2.1],
+            [np.nan, np.nan, np.nan]]
+
+        # Test Imputing Value
+        X = pd.DataFrame(data)
+        Xt = RoboImputer().fit_transform(X)
+        print("Fit_Transform")
+        print(Xt)
+        assert Xt.loc[3,0]=='b', "Failed"
+        assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
+        assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
+
+        # Test Bad Shape
+        ri = RoboImputer()
+        ri.fit(X)
+        Xt = ri.transform(X.loc[0:2])
+
+    if test0:
         df = pd.DataFrame({'string': list('abc'),
                            'int64': list(range(1, 4)),
                            'uint8': np.arange(3, 6).astype('u1'),
@@ -466,27 +494,4 @@ if __name__ == "__main__":
 
             print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))
 
-    if test1:
-        data = [
-            ['a', 1, 2.1],
-            ['b', 1, 1.1],
-            ['b', 2, 2.1],
-            [np.nan, np.nan, np.nan]]
-
-        X = pd.DataFrame(data)
-        Xt = RoboImputer().fit_transform(X)
-        print("Fit_Transform")
-        print(Xt)
-        assert Xt.loc[3,0]=='b', "Failed"
-        assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
-        assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
-
-        ri = RoboImputer()
-        ri.fit(X)
-        Xt = ri.transform(X.loc[0:2])
-        print("\nFit Then Transform")
-        print(Xt)
-        assert Xt.loc[3,0]=='b', "Failed"
-        assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
-        assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
 
