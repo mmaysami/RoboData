@@ -63,6 +63,7 @@ def robo_preprocess(variable='X'):  #, preprocess=None):
         return wrapper
     return decorator
 
+
 # ======================================================================
 class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
     """
@@ -107,7 +108,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                  n_jobs=None, penalty='l2', random_state=None, solver='warn',
                  tol=0.0001, verbose=0, warm_start=False):
 
-        # Validate Initialization Parameters (Only additional ones to LogisticRegression)
+        # # Validate Initialization Parameters (Only additional ones to LogisticRegression)
         assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer."
         assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1."
         assert isinstance(add_missing_flag,bool), "add_missing_flag must be boolean."
@@ -116,22 +117,12 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         assert (scaler is None) or isinstance(scaler, (Normalizer, StandardScaler, MinMaxScaler)), \
             "scaler must be either None or one of predefined sklearn Scalers"
 
-        # Set range of hyper-parameter set for tuning (CVGridSearch)
-        self.cv_penalty = ['l2']
-        self.cv_tol = [1e-6, 1e-5, 1e-4, 1e-3]
-        self.cv_C = [0.1 * e for e in range(1, 11)]
-        self.cv_fit_intercept = [True, False]
-        self.cv_solver = ['newton-cg', 'lbfgs', 'sag', 'saga']
-
-        self.cv_penalty = ['l2']
-        self.cv_tol = [1e-5, 1e-4]
-        self.cv_C = [10 ** p for p in range(-1, 1)]
-        self.cv_fit_intercept = [True, False]
-        self.cv_solver = ['sag', 'saga']
-
-        super().__init__(penalty=penalty, dual=dual, tol=tol, C=C, fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
-                         class_weight=class_weight, random_state=random_state, solver=solver, max_iter=max_iter,
-                         multi_class=multi_class, verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
+        self.max_unique_for_discrete = max_unique_for_discrete
+        self.max_missing_to_keep = max_missing_to_keep
+        self.add_missing_flag = add_missing_flag
+        self.encode_categorical = encode_categorical
+        self.max_category_for_ohe = max_category_for_ohe
+        self.scaler = scaler
 
         self.preprocess = RoboFeaturizer(max_unique_for_discrete=max_unique_for_discrete,
                                          max_missing_to_keep=max_missing_to_keep,
@@ -139,6 +130,28 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                                          encode_categorical=encode_categorical,
                                          max_category_for_ohe=max_category_for_ohe,
                                          scaler=scaler)
+
+
+        super().__init__(penalty=penalty, dual=dual, tol=tol, C=C, fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
+                         class_weight=class_weight, random_state=random_state, solver=solver, max_iter=max_iter,
+                         multi_class=multi_class, verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
+
+        # Set range of hyper-parameter set for tuning (CVGridSearch)
+        self.hypeparam_grid = {'penalty': ['l2'],
+                      'tol': [1e-6, 1e-5, 1e-4, 1e-3],
+                      'C': [10**p for p in range(-2, 2)],
+                      'fit_intercept': [True, False],
+                      'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
+                      'scaler': [None, StandardScaler()]
+                      }
+
+        self.hypeparam_grid = {'penalty': ['l2'],
+                      'tol': [1e-5, 1e-4],
+                      'C': [10**p for p in range(-1, 1)],
+                      'fit_intercept': [True, False],
+                      'solver': ['sag', 'saga'],
+                      }
+
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
@@ -153,7 +166,9 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: None, Update/Fit instance of model class
         """
 
-        # X = self.preprocess.fit_transform(X)
+        # Using decorator instead for data pre-processing
+        # X = self.preprocess.transform(X)
+
         super().fit(X, y)
         return self
 
@@ -169,8 +184,8 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                     e.g. np.array([1, 0, 1])
         """
 
-        # Input validation
-        # X = self.preprocess.transform(X)
+        # Using decorator instead for data pre-processing
+        #  X = self.preprocess.transform(X)
 
         return super().predict(X)
 
@@ -186,7 +201,9 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """
 
+        # Using decorator instead for data pre-processing
         # X = self.preprocess.transform(X)
+
         return super().predict_proba(X)
 
     # ------------------------------------------------------------------
@@ -200,13 +217,14 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         :return: dict
                     {'f1_score': 0.3, 'logloss': 0.7}
         """
-
+        # Using decorator instead for data pre-processing
         # X = self.preprocess.transform(X)
+
         return {'f1_score': f1_score(y, self.predict(X)), 'logloss': log_loss(y, self.predict_proba(X))}
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
-    def tune_parameters(self, X, y):
+    def tune_parameters(self, X, y, hypeparam_grid=None):
         """
         Run K-fold cross validation to choose the best parameters
 
@@ -214,23 +232,26 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
 
         :param X: pd.DataFrame, Input features
         :param y: np.ndarray, Ground truth labels as a numpy array of 0-s and 1-s.
+        :param hypeparam_grid: Dictionary of all hyper-parameter values for CV tuning.
         :return:  dict
                     {'tol': 0.02, 'fit_intercept': False, 'solver': 'sag', ‘scores’:
                      {'f1_score': 0.3, 'logloss': 0.7}}
         """
+        # Using decorator instead for data pre-processing
         # X = self.preprocess.transform(X)
 
-        # Set parameters dictionary
-        parameters = {'penalty': self.cv_penalty,
-                      'tol': self.cv_tol,
-                      'C': self.cv_C,
-                      'fit_intercept': self.cv_fit_intercept,
-                      'solver': self.cv_solver
-                      }
+        # Validate hypeparam_grid
+        assert hypeparam_grid is None or not isinstance(hypeparam_grid, dict), \
+            "hypeparam_grid should be either set to None to use default ranges or set as a dictionary of parameters"
+
+        # If grid of hyper-parameters is not provided, use class default
+        if hypeparam_grid is None:
+            hypeparam_grid = self.hypeparam_grid
+
         scoring = {'f1_score': make_scorer(f1_score), 'logloss': make_scorer(log_loss)}
 
         # Define CV Grid Search
-        clf_tuned = GridSearchCV(self, parameters,
+        clf_tuned = GridSearchCV(self, hypeparam_grid,
                                  scoring=scoring,
                                  cv=5,
                                  refit='f1_score',
@@ -251,8 +272,10 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
             tuned_scores[k] = clf_tuned.cv_results_['mean_test_%s' % k].mean()
         tuned_dict['scoring'] = tuned_scores
 
-        # Update Parent Estimator
-        super().set_params(clf_tuned.best_params_)
+        # Update Original Estimator with best parameters (Optional)
+        clf_tuned.best_params_.pop('scoring')
+        self.set_params(**clf_tuned.best_params_)
+        self.fit(X, y)
 
         return tuned_dict
 
@@ -288,7 +311,7 @@ if __name__ == '__main__':
         yhat = clf.predict(X)
         p = clf.predict_proba(X)
         score = clf.evaluate(X, y)
-        # tune = clf.tune_parameters(X,y)
+        tune = clf.tune_parameters(X, y)
         try:
             print("\n X  %s: \n %s" % (X.shape, X[:5, :4]))
         except:
@@ -301,5 +324,6 @@ if __name__ == '__main__':
         try:
             print("\n score: %s" % score)
             print("\n tune: %s" % tune)
+            print("\n Instance params: %s" %clf.get_params())
         except:
             pass

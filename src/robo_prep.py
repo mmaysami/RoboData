@@ -83,6 +83,7 @@ class RoboImputer(TransformerMixin):
 
         return X.fillna(self.fillvalue, inplace=False)
 
+
 # ======================================================================
 class RoboFeaturizer(BaseEstimator, TransformerMixin):
     """
@@ -100,8 +101,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         :param encode_categorical: [Bool], Encode categorical (non-numerical) columns
         :param max_category_for_ohe: [int], Encode categorical columns with number of categories up to this threshold,
                     use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
-        :param scaler: [None or sklearn scaler]:  No scaling of input if None, scale input using 'fit_transform' method
-        # :param scale: [Bool], Use scaling during pre-processing of data
+        :param scaler: [None or sklearn scaler],  No scaling of input if None, scale input using 'fit_transform' method
     """
     def __init__(self,
                  max_unique_for_discrete=10,
@@ -372,7 +372,6 @@ if __name__ == "__main__":
         XI = enc.inverse_transform([[0, 1, 1, 0, 0], [0, 0, 0, 1, 0]])
         print("Feature Name", enc.get_feature_names())
 
-
     if test3:
         import copy
         pass
@@ -396,7 +395,6 @@ if __name__ == "__main__":
 
         print("\nDrops   : ", X0.columns[rf.drop_cols])
         print("\nNames X0: ", X0.columns.values)
-
 
     if test2:
         # X = pd.DataFrame(df)
@@ -437,7 +435,6 @@ if __name__ == "__main__":
 
             print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))
 
-
     if test1:
         data = [
             ['a', 1, 2.1],
@@ -452,7 +449,6 @@ if __name__ == "__main__":
         assert Xt.loc[3,0]=='b', "Failed"
         assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
         assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
-
 
         ri = RoboImputer()
         ri.fit(X)
