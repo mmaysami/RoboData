@@ -179,7 +179,6 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         Predict class labels on new data
 
         :param X: pd.DataFrame, Input features
-        :param y:
         :return: np.ndarray
                     e.g. np.array([1, 0, 1])
         """
@@ -196,7 +195,6 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         Predict the probability of each label
 
         :param X: pd.DataFrame, Input features
-        :param y:
         :return: np.ndarray
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """

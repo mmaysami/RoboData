@@ -39,6 +39,12 @@ class RoboImputer(TransformerMixin):
     # ------------------------------------------------------------------
     @staticmethod
     def most_frequent(col):
+        """
+        Find the most frequest value in a pandas DataFrame Columns
+
+        :param col: Pandas DataFrame Column
+        :return: Most frequent value in input column
+        """
         try:
             return col.value_counts().index[0]
         except IndexError:
@@ -46,6 +52,12 @@ class RoboImputer(TransformerMixin):
 
     # ------------------------------------------------------------------
     def get_impute_fill_value(self, col):
+        """
+        Get fill value for any missing sample in the given column of data
+
+        :param col: Columns of data as pandas DataSeries
+        :return: Value to be used to fill missing samples
+        """
         if col.dtype == np.dtype("O"):
             val = self.most_frequent(col)
         elif str(col.dtype) == "category":
@@ -60,6 +72,13 @@ class RoboImputer(TransformerMixin):
 
     # ------------------------------------------------------------------
     def fit(self, X, y=None):
+        """
+        Fit/Find fill values for all columns of training input data
+
+        :param X: pd.DataFrame, Input features
+        :param y: None, not used in this implementation
+        :return: None, Update/Fit instance of model class
+        """
         if not isinstance(X, pd.DataFrame):
             X = pd.DataFrame(X)
 
@@ -144,6 +163,13 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 
     # ------------------------------------------------------------------
     def fit(self, X, y=None):
+        """
+        Fit/pre-analyze training input data
+
+        :param X: pd.DataFrame, Input features
+        :param y: None, not used in this implementation
+        :return: None, Update/Fit instance of model class
+        """
         # TODO: Move Util functions into a separate file for re-use
         # --------------------------------
         def is_numeric(col):
@@ -275,7 +301,12 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 
     # ------------------------------------------------------------------
     def transform(self, X):
+        """
+        Preprocess and transform raw input X to final numeric and filled form
 
+        :param X: pd.DataFrame, Input features
+        :return: pd.DataFrame, Processed and Featurized Input features
+        """
         # Check is fit had been called
         # Not using X_ since we care about consistent shape of X_fit and X_transform
         # check_consistent_length on X only checks length
