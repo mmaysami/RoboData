@@ -147,12 +147,13 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                                'scaler': [None, StandardScaler()]
                                }
 
-        self.hypeparam_grid = {
-            'C': [10 ** p for p in range(-1, 1)],
-            'tol': [1e-5, 1e-4, 1e-3],
-            # 'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
-            # 'scaler': [None, StandardScaler()]
-        }
+        # # Smaller hyper-param Grid
+        # self.hypeparam_grid = {
+        #     'C': [10 ** p for p in range(-1, 1)],
+        #     'tol': [1e-5, 1e-4, 1e-3],
+        #     # 'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
+        #     # 'scaler': [None, StandardScaler()]
+        # }
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
@@ -288,46 +289,44 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
 #                                 Main Part
 # ====================================================================================
 # ====================================================================================
-if __name__ == '__main__':
-    print("Executing  Model Example!")
-
-    from sklearn.datasets import load_breast_cancer  # Binary Class
-
-    test0 = 1
-
-    if test0:
-        df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
-                         na_values=['na', 'nan', 'none', 'NONE'])
-        print("df Columns: ", len(df.columns.values))
-
-        col_y = 'is_bad'
-        y = np.ravel(df[col_y])
-        X = df.drop([col_y] + ['initial_list_status', 'pymnt_plan'], axis=1)
-
-        # X, y = load_breast_cancer(return_X_y=True)
-        X = pd.DataFrame(X)
-        # y = y[:-2]
-
-        # clf = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial', max_iter=1000)
-        clf = RoboLogistic(solver='lbfgs',
-                           multi_class='auto',
-                           C=1.0,
-                           max_iter=500,
-                           scaler=StandardScaler())
-
-        clf.fit(X, y)
-        yhat = clf.predict(X)
-        p = clf.predict_proba(X)
-        score = clf.evaluate(X, y)
-        tune = clf.tune_parameters(X, y)
-        try:
-            print("\n X  %s: \n %s" % (X.shape, X[:5, :4]))
-        except:
-            pass
-
-        print("\n y  %s: \n %s" % (y.shape, y[:10]))
-        print("\n yhat %s: \n %s" % (yhat.shape, yhat[:10]))
-        print("\n p  %s: \n %s" % (p.shape, p[:10]))
-        print("\n score: %s" % score)
-        print("\n tune: %s" % tune)
-        print("\n Instance params: %s" % clf.get_params())
+# if __name__ == '__main__':
+#     print("Executing  Model Example!")
+#     from sklearn.datasets import load_breast_cancer  # Binary Class
+#     test0 = 1
+#
+#     if test0:
+#         df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+#                          na_values=['na', 'nan', 'none', 'NONE'])
+#         print("df Columns: ", len(df.columns.values))
+#
+#         col_y = 'is_bad'
+#         y = np.ravel(df[col_y])
+#         X = df.drop([col_y] + ['initial_list_status', 'pymnt_plan'], axis=1)
+#
+#         # X, y = load_breast_cancer(return_X_y=True)
+#         X = pd.DataFrame(X)
+#         # y = y[:-2]
+#
+#         # clf = LogisticRegression(random_state=0, solver='lbfgs', multi_class='multinomial', max_iter=1000)
+#         clf = RoboLogistic(solver='lbfgs',
+#                            multi_class='auto',
+#                            C=1.0,
+#                            max_iter=500,
+#                            scaler=StandardScaler())
+#
+#         clf.fit(X, y)
+#         yhat = clf.predict(X)
+#         p = clf.predict_proba(X)
+#         score = clf.evaluate(X, y)
+#         tune = clf.tune_parameters(X, y)
+#         try:
+#             print("\n X  %s: \n %s" % (X.shape, X[:5, :4]))
+#         except:
+#             pass
+#
+#         print("\n y  %s: \n %s" % (y.shape, y[:10]))
+#         print("\n yhat %s: \n %s" % (yhat.shape, yhat[:10]))
+#         print("\n p  %s: \n %s" % (p.shape, p[:10]))
+#         print("\n score: %s" % score)
+#         print("\n tune: %s" % tune)
+#         print("\n Instance params: %s" % clf.get_params())

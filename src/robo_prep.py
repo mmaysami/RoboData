@@ -403,96 +403,96 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
 # ======================================================================
 #               Main
 # ======================================================================
-if __name__ == "__main__":
-    test0, test1, test2, test3 = 0, 0, 1, 0
-    # df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na','nan','none','NONE'])
-    df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
-                     na_values=['na', 'nan', 'none', 'NONE'])
-    print("df Columns: ", len(df.columns.values))
-
-    if test3:
-        import copy
-
-        pass
-
-        X1 = df.loc[1::2]  # .copy()
-        X0 = df.loc[::2]  # .copy()
-
-        rf = RoboFeaturizer(encode_categorical=True,
-                            add_missing_flag=False,
-                            max_missing_to_keep=0.75,
-                            scaler=StandardScaler()
-                            )
-
-        X0t = rf.fit_transform(X0)
-        # X1t = rf.transform(X1.loc[:, ::2])
-        print("Input : ", len(X0.columns.values))
-        print("Fit S : ", len(rf.feature_indices_))
-        print("X0T   : ", X0t.shape)
-        print("\nId   S[%i]: " % len(rf.feature_indices_), rf.feature_indices_)
-        print("\nName S[%i]: " % len(rf.feature_names_), rf.feature_names_)
-
-        print("\nDrops   : ", X0.columns[rf.drop_cols])
-        print("\nNames X0: ", X0.columns.values)
-
-    if test2:
-        df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
-                         na_values=['na', 'nan', 'none', 'NONE'])
-        imp = RoboImputer()
-        imp.fit_transform(df)
-
-    if test1:
-        data = [
-            ['a', 1, 2.1],
-            ['b', 1, 1.1],
-            ['b', 2, 2.1],
-            [np.nan, np.nan, np.nan]]
-
-        # Test Imputing Value
-        X = pd.DataFrame(data)
-        Xt = RoboImputer().fit_transform(X)
-        print("Fit_Transform")
-        print(Xt)
-        assert Xt.loc[3, 0] == 'b', "Failed"
-        assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
-        assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
-
-        # Test Bad Shape
-        ri = RoboImputer()
-        ri.fit(X)
-        Xt = ri.transform(X.loc[0:2])
-
-    if test0:
-        df = pd.DataFrame({'string': list('abc'),
-                           'int64': list(range(1, 4)),
-                           'uint8': np.arange(3, 6).astype('u1'),
-                           'float64': np.arange(4.0, 7.0),
-                           'bool1': [True, False, True],
-                           'bool2': [False, True, False],
-                           'dates': pd.date_range('now', periods=3),
-                           'category': pd.Series(list("ABC")).astype('category'),
-                           'A': np.random.rand(3),
-                           'B': 1,
-                           'C': 'foo',
-                           'D': pd.Timestamp('20010102'),
-                           'E': pd.Series([1.0] * 3).astype('float32'),
-                           'F': False,
-                           'G': pd.Series([1] * 3, dtype='int8')
-                           })
-
-        for c in df.columns.values:
-            if df[c].dtype == np.dtype("O"):
-                mytype = "* Object"
-            elif str(df[c].dtype) == "category":
-                mytype = "* Category"
-            elif df[c].dtype == np.dtype(float):
-                mytype = "* Float"
-            # elif df[c].dtype == np.dtype(int):
-            #     mytype = "* int"
-            elif isinstance(df[c].dtype, int):
-                mytype = "* int"
-
-            else:
-                mytype = df[c].dtype
-
-            print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))
+# if __name__ == "__main__":
+#     test0, test1, test2, test3 = 0, 0, 1, 0
+#     # df = pd.read_csv('../data/DR_Demo_Lending_Club_reduced.csv', index_col=0, na_values=['na','nan','none','NONE'])
+#     df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+#                      na_values=['na', 'nan', 'none', 'NONE'])
+#     print("df Columns: ", len(df.columns.values))
+#
+#     if test3:
+#         import copy
+#
+#         pass
+#
+#         X1 = df.loc[1::2]  # .copy()
+#         X0 = df.loc[::2]  # .copy()
+#
+#         rf = RoboFeaturizer(encode_categorical=True,
+#                             add_missing_flag=False,
+#                             max_missing_to_keep=0.75,
+#                             scaler=StandardScaler()
+#                             )
+#
+#         X0t = rf.fit_transform(X0)
+#         # X1t = rf.transform(X1.loc[:, ::2])
+#         print("Input : ", len(X0.columns.values))
+#         print("Fit S : ", len(rf.feature_indices_))
+#         print("X0T   : ", X0t.shape)
+#         print("\nId   S[%i]: " % len(rf.feature_indices_), rf.feature_indices_)
+#         print("\nName S[%i]: " % len(rf.feature_names_), rf.feature_names_)
+#
+#         print("\nDrops   : ", X0.columns[rf.drop_cols])
+#         print("\nNames X0: ", X0.columns.values)
+#
+#     if test2:
+#         df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
+#                          na_values=['na', 'nan', 'none', 'NONE'])
+#         imp = RoboImputer()
+#         imp.fit_transform(df)
+#
+#     if test1:
+#         data = [
+#             ['a', 1, 2.1],
+#             ['b', 1, 1.1],
+#             ['b', 2, 2.1],
+#             [np.nan, np.nan, np.nan]]
+#
+#         # Test Imputing Value
+#         X = pd.DataFrame(data)
+#         Xt = RoboImputer().fit_transform(X)
+#         print("Fit_Transform")
+#         print(Xt)
+#         assert Xt.loc[3, 0] == 'b', "Failed"
+#         assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
+#         assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
+#
+#         # Test Bad Shape
+#         ri = RoboImputer()
+#         ri.fit(X)
+#         Xt = ri.transform(X.loc[0:2])
+#
+#     if test0:
+#         df = pd.DataFrame({'string': list('abc'),
+#                            'int64': list(range(1, 4)),
+#                            'uint8': np.arange(3, 6).astype('u1'),
+#                            'float64': np.arange(4.0, 7.0),
+#                            'bool1': [True, False, True],
+#                            'bool2': [False, True, False],
+#                            'dates': pd.date_range('now', periods=3),
+#                            'category': pd.Series(list("ABC")).astype('category'),
+#                            'A': np.random.rand(3),
+#                            'B': 1,
+#                            'C': 'foo',
+#                            'D': pd.Timestamp('20010102'),
+#                            'E': pd.Series([1.0] * 3).astype('float32'),
+#                            'F': False,
+#                            'G': pd.Series([1] * 3, dtype='int8')
+#                            })
+#
+#         for c in df.columns.values:
+#             if df[c].dtype == np.dtype("O"):
+#                 mytype = "* Object"
+#             elif str(df[c].dtype) == "category":
+#                 mytype = "* Category"
+#             elif df[c].dtype == np.dtype(float):
+#                 mytype = "* Float"
+#             # elif df[c].dtype == np.dtype(int):
+#             #     mytype = "* int"
+#             elif isinstance(df[c].dtype, int):
+#                 mytype = "* int"
+#
+#             else:
+#                 mytype = df[c].dtype
+#
+#             print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))

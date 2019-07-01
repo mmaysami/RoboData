@@ -16,7 +16,6 @@ suite.addTests(loader.loadTestsFromModule(test_logistic))
 # suite.addTests(TestLoader().discover('.'))
 
 # initialize a runner, pass it your suite and run it
-# print("Testing in progress:")
 runner = TextTestRunner(verbosity=3)
 result = runner.run(suite)
 # unittest.main(testRunner=runner)
