@@ -1,8 +1,7 @@
-class RoboFeaturizer(object):
-    pass# Binary Classifier Class
+# Binary Classifier Class
 
 Binary classification model which wraps python scikit-learn's **Regularized Logistic Regression**
-with series of specific functionalities.
+with series of specific functionalities. 
 
 All input features `X` are assumed to be given as pandas DataFrames 
 with a mix of numeric and categorical data. The output `y` is assumed to be in form of a numpy array of 0-s and 1-s.
@@ -10,9 +9,19 @@ with a mix of numeric and categorical data. The output `y` is assumed to be in f
 X = pd.DataFrame({'v1': ['c', 'b', 'a'], 'v2': [2, 6, 4]}) 
 y = np.array([0, 0, 1])
 ```
-
+The package is organized in following folders:
+ - `src`: Main class codes and utilities 
+ - `test`: Test cases for unittest 
+ - `docs`: Documentation and questions
+ - `data`: Test data and exploratory data analysis
+ 
+ There are two more classes developed beside the main classifier classes as below 
+ which are hosted under *robo_prep* file.
+ - `RoboImputer`: Filling up the missing values
+ - `RoboFeaturizer`: generalized pre-processing of input data for classifier class
+ 
 ## Imputer
-The class *RoboImputer* performs filling up the missing values with the lows the simple imputing rules below.
+The class *RoboImputer* performs filling up the missing values with the laws the simple imputing rules below.
 This class is used in pro-processing of data thorough the *RoboFeaturizer* class.   
  - Column dtype    :   Imputing Value
  - object/category :   most frequent value in the column
@@ -96,6 +105,45 @@ dictionary of hyper-parameters for search.
 self.tune_parameters(X, y, k=5, hypeparam_grid=None)
 ```
 
-## Test Data
-Exploratory data analysis of test dataset has been performed and provided in  
+## Unit Test
+Exploratory data analysis of test dataset was performed and provided for reference in  
 [a notebook](../data/EDA.ipynb).
+
+For the purpose of unit test, a simple class of `TestData` was developed to load either the bad credit dataset or 
+the breast cancer dataset from scikit-learn. The class simply loads the data and helps with generating *X* and *y*
+Unit test was developed with a focus on each of the three classes defined and discussed above. 
+
+#### TestData Class
+```python
+X, y = TestData().make_X_y()
+```
+
+#### Test Cases
+For each of the classes:
+- Check if proper validation and error is provided if a class instance is not fit and called for prediction or transform. 
+- Check if input is in the correct shape during calling transform or prediction.
+- Check class-specific cases to ensure class is behaving according to the design.
+
+There is room for more test cases and integration with this package. 
+Coommand below can be used from command line to start testing: 
+```cmd
+$ python -m unittest discover
+```
+
+##### Tests on Imputer Class
+ - `test_bad_input_shape`
+ - `test_unfit_instance`
+ - `test_filevalue1`
+ - `test_filevalue2`
+
+##### Tests on Featurizer Class
+ - `test_bad_input_shape`
+ - `test_unfit_instance`
+ - `test_missing_value`
+ - `test_new_category`
+
+##### Tests on Logistic Class
+ - `test_bad_input_shape`
+ - `test_unfit_instance`
+ - `test_result_formats`
+ - `tesT_reproduce`

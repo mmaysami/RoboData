@@ -2,6 +2,10 @@
 # Name:        RoboLogistic Unit Tests
 # Purpose:     Unit Test Cases to check RoboLogistic Class
 #
+# - can handle missing values
+# - can handle new category levels at prediction time
+# - returns results in the expected format
+# - other useful unit tests you may think of (if time allows)
 #
 # Author:      Mohammad Maysami
 #

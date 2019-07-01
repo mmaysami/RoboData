@@ -2,7 +2,6 @@
 # Name:        RoboImputer Unit Tests
 # Purpose:     Unit Test Cases to check RoboImputer Class
 #
-#
 # Author:      Mohammad Maysami
 #
 # Created:     June 2019
@@ -42,20 +41,6 @@ class TestRunner(unittest.TestCase):
         self.mc = np.nanmean(c)
         self.X = pd.DataFrame({'a': a, 'b': b, 'c': c})
 
-    # ------------------------------------------------------------------
-    def test_fillvalue1(self):
-        # Test a basic case
-
-        # Fit
-        Xt = RoboImputer().fit_transform(self.X)
-
-        # assert Xt.loc[3, 'a'] == self.ma
-        # assert abs(Xt.loc[3, 'b'] - self.mb) < self.numberThresh
-        # assert abs(Xt.loc[3, 'c'] - self.mc) < self.numberThresh
-
-        self.assertEqual(Xt.iloc[3, 0], self.ma)
-        self.assertAlmostEqual(Xt.iloc[3, 1], self.mb, self.places)
-        self.assertAlmostEqual(Xt.iloc[3, 2], self.mc, self.places)
 
     # ------------------------------------------------------------------
     def test_bad_input_shape(self):
@@ -76,6 +61,21 @@ class TestRunner(unittest.TestCase):
 
         robo = RoboImputer()
         self.assertRaises(NotFittedError, robo.transform, self.X)
+
+    # ------------------------------------------------------------------
+    def test_fillvalue1(self):
+        # Test a basic case
+
+        # Fit
+        Xt = RoboImputer().fit_transform(self.X)
+
+        # assert Xt.loc[3, 'a'] == self.ma
+        # assert abs(Xt.loc[3, 'b'] - self.mb) < self.numberThresh
+        # assert abs(Xt.loc[3, 'c'] - self.mc) < self.numberThresh
+
+        self.assertEqual(Xt.iloc[3, 0], self.ma)
+        self.assertAlmostEqual(Xt.iloc[3, 1], self.mb, self.places)
+        self.assertAlmostEqual(Xt.iloc[3, 2], self.mc, self.places)
 
     # ------------------------------------------------------------------
     def test_fillvalue2(self):

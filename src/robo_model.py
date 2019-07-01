@@ -13,8 +13,8 @@
 # from abc import abstractmethod, ABCMeta
 from functools import wraps
 from inspect import getfullargspec
-import numpy as np
-import pandas as pd
+# import numpy as np
+# import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
 from sklearn.utils.validation import check_is_fitted  # , check_consistent_length, check_X_y, check_array
@@ -30,6 +30,7 @@ from src.robo_prep import RoboFeaturizer
 # =============================================================
 # Generalize Decorator of Function with Arguments
 # =============================================================
+# TODO: Might be moved to a separate utils for cleanup
 def robo_preprocess(variable='X'):  # , preprocess=None):
     def decorator(func):
         @wraps(func)
@@ -140,9 +141,9 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
 
         # Set range of hyper-parameter set for tuning (CVGridSearch)
         self.hypeparam_grid = {'penalty': ['l2'],
-                               'tol': [1e-6, 1e-5, 1e-4, 1e-3],
+                               'tol': [1e-5, 1e-4, 1e-3],
                                'C': [10 ** p for p in range(-2, 2)],
-                               # 'fit_intercept': [True, False],
+                               'fit_intercept': [True, False],
                                'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
                                'scaler': [None, StandardScaler()]
                                }
@@ -151,8 +152,9 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         # self.hypeparam_grid = {
         #     'C': [10 ** p for p in range(-1, 1)],
         #     'tol': [1e-5, 1e-4, 1e-3],
-        #     # 'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
-        #     # 'scaler': [None, StandardScaler()]
+        #     'fit_intercept': [True, False],
+        #     'solver': ['lbfgs', 'sag', 'saga'],
+        #     'scaler': [None, StandardScaler()],
         # }
 
     # ------------------------------------------------------------------
