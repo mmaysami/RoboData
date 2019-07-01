@@ -65,7 +65,7 @@ f = RoboLogistic(
              scaler = StandardScaler(),
              ...)
 ```
-where the initalization parameters are combination of `RoboFeaturizer` class discussed above and 
+where the initialization parameters are combination of `RoboFeaturizer` class discussed above and 
 scikit-learn's `LogisticRegression` class.
  
 ##### fit: 

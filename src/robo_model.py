@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
-from sklearn.utils.validation import check_is_fitted, check_consistent_length, check_X_y, check_array
+from sklearn.utils.validation import check_is_fitted  # , check_consistent_length, check_X_y, check_array
 from sklearn.metrics import make_scorer, f1_score, log_loss
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
@@ -30,7 +30,7 @@ from src.robo_prep import RoboFeaturizer
 # =============================================================
 # Generalize Decorator of Function with Arguments
 # =============================================================
-def robo_preprocess(variable='X'):  #, preprocess=None):
+def robo_preprocess(variable='X'):  # , preprocess=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -61,7 +61,9 @@ def robo_preprocess(variable='X'):  #, preprocess=None):
             else:
                 raise Warning("Function decorator parameter %s NOT Found in function %s arguments!" % (variable, func.__name__))
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -111,8 +113,8 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         # # Validate Initialization Parameters (Only additional ones to LogisticRegression)
         assert max_unique_for_discrete >= 0, "max_unique_for_discrete must be non-negative integer."
         assert 0 <= max_missing_to_keep <= 1, "max_missing_to_keep must be between 0 and 1."
-        assert isinstance(add_missing_flag,bool), "add_missing_flag must be boolean."
-        assert isinstance(encode_categorical,bool), "encode_categorical must be boolean."
+        assert isinstance(add_missing_flag, bool), "add_missing_flag must be boolean."
+        assert isinstance(encode_categorical, bool), "encode_categorical must be boolean."
         assert max_category_for_ohe >= 0, "max_category_for_ohe must be none-negative integer."
         assert (scaler is None) or isinstance(scaler, (Normalizer, StandardScaler, MinMaxScaler)), \
             "scaler must be either None or one of predefined sklearn Scalers"
@@ -132,27 +134,25 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                                          max_category_for_ohe=max_category_for_ohe,
                                          scaler=scaler)
 
-
         super().__init__(penalty=penalty, dual=dual, tol=tol, C=C, fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
                          class_weight=class_weight, random_state=random_state, solver=solver, max_iter=max_iter,
                          multi_class=multi_class, verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
 
         # Set range of hyper-parameter set for tuning (CVGridSearch)
         self.hypeparam_grid = {'penalty': ['l2'],
-                      'tol': [1e-6, 1e-5, 1e-4, 1e-3],
-                      'C': [10**p for p in range(-2, 2)],
-                      # 'fit_intercept': [True, False],
-                      'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
-                      'scaler': [None, StandardScaler()]
-                      }
+                               'tol': [1e-6, 1e-5, 1e-4, 1e-3],
+                               'C': [10 ** p for p in range(-2, 2)],
+                               # 'fit_intercept': [True, False],
+                               'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
+                               'scaler': [None, StandardScaler()]
+                               }
 
         self.hypeparam_grid = {
             'C': [10 ** p for p in range(-1, 1)],
             'tol': [1e-5, 1e-4, 1e-3],
             # 'solver': ['newton-cg', 'lbfgs', 'sag', 'saga'],
             # 'scaler': [None, StandardScaler()]
-                      }
-
+        }
 
     # ------------------------------------------------------------------
     @robo_preprocess('X')
@@ -185,7 +185,7 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
         """
 
         # Check is fit had been called
-        check_is_fitted(self, ['classes_','coef_'])
+        check_is_fitted(self, ['classes_', 'coef_'])
 
         # Using decorator instead for data pre-processing
         #  X = self.preprocess.transform(X)
@@ -203,11 +203,10 @@ class RoboLogistic(LogisticRegression, BaseEstimator, ClassifierMixin):
                     np.array([[0.2, 0.8], [0.9, 0.1], [0.5, 0.5]])
         """
         # Check is fit had been called
-        check_is_fitted(self, ['classes_','coef_'])
+        check_is_fitted(self, ['classes_', 'coef_'])
 
         # Using decorator instead for data pre-processing
         # X = self.preprocess.transform(X)
-
 
         return super().predict_proba(X)
 
@@ -293,6 +292,7 @@ if __name__ == '__main__':
     print("Executing  Model Example!")
 
     from sklearn.datasets import load_breast_cancer  # Binary Class
+
     test0 = 1
 
     if test0:
@@ -302,8 +302,7 @@ if __name__ == '__main__':
 
         col_y = 'is_bad'
         y = np.ravel(df[col_y])
-        X = df.drop([col_y]+['initial_list_status', 'pymnt_plan'], axis=1)
-
+        X = df.drop([col_y] + ['initial_list_status', 'pymnt_plan'], axis=1)
 
         # X, y = load_breast_cancer(return_X_y=True)
         X = pd.DataFrame(X)
@@ -331,4 +330,4 @@ if __name__ == '__main__':
         print("\n p  %s: \n %s" % (p.shape, p[:10]))
         print("\n score: %s" % score)
         print("\n tune: %s" % tune)
-        print("\n Instance params: %s" %clf.get_params())
+        print("\n Instance params: %s" % clf.get_params())

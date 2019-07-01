@@ -12,7 +12,7 @@
 
 import unittest
 import numpy as np
-import pandas as pd
+# import pandas as pd
 
 # import os
 # import sys
@@ -23,6 +23,7 @@ from src import RoboFeaturizer
 from sklearn.exceptions import NotFittedError
 from test.data import TestData
 
+
 # ======================================================================
 class TestRunner(unittest.TestCase):
 
@@ -30,7 +31,6 @@ class TestRunner(unittest.TestCase):
     def setUp(self):
         self.numberThresh = .001
         self.places = 3  # Decimal Places
-
 
     # ------------------------------------------------------------------
     def test_bad_input_shape(self):
@@ -104,7 +104,7 @@ class TestRunner(unittest.TestCase):
         if data.skcancer:
             return True
 
-        cols_pick = ['policy_code'] #, 'addr_state', 'annual_inc']
+        cols_pick = ['policy_code']  # , 'addr_state', 'annual_inc']
         X = df.loc[:, cols_pick]
 
         # Fit
@@ -119,4 +119,3 @@ class TestRunner(unittest.TestCase):
 
         for row in range0:
             self.assertIsInstance(Xpt[row, 0], np.float)
-

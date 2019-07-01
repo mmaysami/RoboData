@@ -13,8 +13,6 @@
 # Copyright:   (c) MM 2019
 # Licence:     See Git
 # -------------------------------------------------------------------------------
-import os
-import sys
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_breast_cancer  # Binary Class
@@ -99,4 +97,3 @@ class TestData(object):
             self.X = pd.DataFrame(self.X)
 
         return self.X, self.y
-

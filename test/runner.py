@@ -1,7 +1,4 @@
-
-# import unittest
 from unittest import TestLoader, TestSuite, TextTestRunner
-
 
 # import test modules
 from test import test_imputer

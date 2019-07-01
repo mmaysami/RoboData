@@ -16,12 +16,14 @@ import scipy as scp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
-from sklearn.utils.validation import check_is_fitted, check_consistent_length, check_X_y, check_array
+from sklearn.utils.validation import check_is_fitted  # , check_consistent_length, check_X_y, check_array
 from sklearn.exceptions import NotFittedError
 
 # Turn off warning as value settings inside classes follow proper pandas format
 # But it will warn if input of functions are copy themselves.
 pd.options.mode.chained_assignment = None
+
+
 # ======================================================================
 class RoboImputer(TransformerMixin):
     """
@@ -78,7 +80,7 @@ class RoboImputer(TransformerMixin):
                            np.dtype(np.int16),
                            np.dtype(np.int32),
                            np.dtype(np.int64)] and \
-                col.nunique()> self.max_unique_for_discrete:
+                col.nunique() > self.max_unique_for_discrete:
             val = col.mean()
         else:
             val = col.median()
@@ -138,6 +140,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
                     use one-hot-encoding and for the rest use alternate. Only effective if `encode_categorical=True`
         :param scaler: [None or sklearn scaler],  No scaling of input if None, scale input using 'fit_transform' method
     """
+
     def __init__(self,
                  max_unique_for_discrete=10,
                  max_missing_to_keep=0.80,
@@ -158,7 +161,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
             "scaler must be either None or one of predefined sklearn Scalers"
 
         self.max_unique_for_discrete = max_unique_for_discrete
-        self.max_missing_to_keep = 1    #max_missing_to_keep
+        self.max_missing_to_keep = 1  # max_missing_to_keep
         self.add_missing_flag = add_missing_flag
         self.encode_categorical = encode_categorical
         self.max_category_for_ohe = max_category_for_ohe
@@ -185,6 +188,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         :param y: None, not used in this implementation
         :return: None, Update/Fit instance of model class
         """
+
         # TODO: Move Util functions into a separate file for re-use
         # --------------------------------
         def is_numeric(col):
@@ -226,7 +230,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         self.drop_cols = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns to drop (1 Unique)
         self.ohe_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns needing One-Hot Encoding
         self.lbl_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Columns needing Label Encoding
-        #TODO: Replace Lable with Target or Better Encoders
+        # TODO: Replace Lable with Target or Better Encoders
         self.numeric_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Numeric Columns
         self.categorical_indices = np.zeros(X.shape[1], dtype=bool)  # Bool Index of Categorical Columns
 
@@ -249,7 +253,7 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         # Impute Missing data
         X = self.imputer.fit_transform(X)
         if X.isnull().values.any():
-            raise(NotFittedError("Input X has null values. Check if RoboImputer instance is fitted."))
+            raise (NotFittedError("Input X has null values. Check if RoboImputer instance is fitted."))
 
         # Process Columns: Drop Uni-Valued Variables, Detect Cont. vs Boolean Dummy
         for i, col in enumerate(X):
@@ -290,8 +294,8 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
             self.one_hot_encoder.fit(X[X.columns[self.ohe_indices]])
 
             for cat, att, ind in zip(self.one_hot_encoder.categories_,
-                                X.columns[self.ohe_indices],
-                                np.where(self.ohe_indices)[0]):
+                                     X.columns[self.ohe_indices],
+                                     np.where(self.ohe_indices)[0]):
                 self.feature_names_.extend(["{}_OHE_{}".format(att, j) for j in cat])
                 self.feature_indices_.extend([ind] * len(cat))
 
@@ -336,12 +340,11 @@ class RoboFeaturizer(BaseEstimator, TransformerMixin):
         # check_consistent_length on X only checks length
         # check_consistent_length(self.X_,X)
         if X.shape != self.fit_X_shape_:
-            raise ValueError('Shape of input %s is different from what was seen in `fit` %s' %(X.shape, self.fit_X_shape_))
+            raise ValueError('Shape of input %s is different from what was seen in `fit` %s' % (X.shape, self.fit_X_shape_))
 
         # Ensure X is DataFrame and Get Columns
         if not isinstance(X, pd.DataFrame):
             X = pd.DataFrame(X)
-
 
         xt_numeric = []
         # Missing Columns
@@ -407,18 +410,18 @@ if __name__ == "__main__":
                      na_values=['na', 'nan', 'none', 'NONE'])
     print("df Columns: ", len(df.columns.values))
 
-
     if test3:
         import copy
+
         pass
 
-        X1 = df.loc[1::2]   #.copy()
-        X0 = df.loc[::2]    #.copy()
+        X1 = df.loc[1::2]  # .copy()
+        X0 = df.loc[::2]  # .copy()
 
         rf = RoboFeaturizer(encode_categorical=True,
                             add_missing_flag=False,
                             max_missing_to_keep=0.75,
-                            scaler=Normalizer()
+                            scaler=StandardScaler()
                             )
 
         X0t = rf.fit_transform(X0)
@@ -426,15 +429,15 @@ if __name__ == "__main__":
         print("Input : ", len(X0.columns.values))
         print("Fit S : ", len(rf.feature_indices_))
         print("X0T   : ", X0t.shape)
-        print("\nId   S[%i]: " %len(rf.feature_indices_), rf.feature_indices_)
-        print("\nName S[%i]: " %len(rf.feature_names_), rf.feature_names_)
+        print("\nId   S[%i]: " % len(rf.feature_indices_), rf.feature_indices_)
+        print("\nName S[%i]: " % len(rf.feature_names_), rf.feature_names_)
 
         print("\nDrops   : ", X0.columns[rf.drop_cols])
         print("\nNames X0: ", X0.columns.values)
 
     if test2:
         df = pd.read_csv("https://s3.amazonaws.com/datarobot_public_datasets/DR_Demo_Lending_Club_reduced.csv", index_col=0,
-                              na_values=['na', 'nan', 'none', 'NONE'])
+                         na_values=['na', 'nan', 'none', 'NONE'])
         imp = RoboImputer()
         imp.fit_transform(df)
 
@@ -450,7 +453,7 @@ if __name__ == "__main__":
         Xt = RoboImputer().fit_transform(X)
         print("Fit_Transform")
         print(Xt)
-        assert Xt.loc[3,0]=='b', "Failed"
+        assert Xt.loc[3, 0] == 'b', "Failed"
         assert abs(Xt.loc[3, 1] - 1.333) < 2e-3, "Failed"
         assert abs(Xt.loc[3, 2] - 1.766) < 2e-3, "Failed"
 
@@ -493,5 +496,3 @@ if __name__ == "__main__":
                 mytype = df[c].dtype
 
             print("%10s, %10s ==> %s" % (c, df[c].dtype, mytype))
-
-

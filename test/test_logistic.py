@@ -11,7 +11,7 @@
 # -------------------------------------------------------------------------------
 import unittest
 import numpy as np
-import pandas as pd
+# import pandas as pd
 
 # import os
 # import sys
@@ -89,7 +89,7 @@ class TestRunner(unittest.TestCase):
         # Output Example np.array([1, 0, 1])
         res_predict = robo.predict(X)
         self.assertIsInstance(res_predict, np.ndarray)
-        self.assertTupleEqual(res_predict.shape, (data.df.shape[0], ))
+        self.assertTupleEqual(res_predict.shape, (data.df.shape[0],))
         # self.assertFalse(np.any(res_predict != 0 & res_predict != 0))
 
     # ------------------------------------------------------------------
@@ -106,7 +106,7 @@ class TestRunner(unittest.TestCase):
         res_predict_proba = robo.predict_proba(X)
         self.assertIsInstance(res_predict_proba, np.ndarray)
         self.assertEqual(res_predict_proba.shape, (data.df.shape[0], len(robo.classes_)))
-        self.assertTupleEqual(res_predict_proba.shape, (data.df.shape[0], len(robo.classes_)) )
+        self.assertTupleEqual(res_predict_proba.shape, (data.df.shape[0], len(robo.classes_)))
         # self.assertFalse(np.any(np.sum(res_predict_proba, axis=1) != 1))
 
     # ------------------------------------------------------------------
@@ -160,4 +160,3 @@ class TestRunner(unittest.TestCase):
             self.assertDictEqual(res_evaluate, {'f1_score': 0.003084040092521203, 'logloss': 0.37192273211820986})
         else:
             self.assertDictEqual(res_evaluate, {'f1_score': 0.9902370990237099, 'logloss': 0.05331853517496121})
-
