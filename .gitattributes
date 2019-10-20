@@ -21,6 +21,7 @@
 
 # Jupyter notebook
 *.ipynb  text
+*.ipynb linguist-vendored=false
 
 # Note: .db, .p, and .pkl files are associated
 # with the python modules ``pickle``, ``dbm.*``,
